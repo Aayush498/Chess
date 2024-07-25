@@ -5,59 +5,64 @@ const { Chess } = require("chess.js");
 const path = require("path");
 
 const app = express();
-
 const server = http.createServer(app);
 const io = socket(server);
 
 const chess = new Chess();
 let players = {};
-let currentPlayer = "W";
 
 app.set("view engine", "ejs");
 app.use(express.static(path.join(__dirname, "public")));
 
 app.get("/", (req, res) => {
     res.render("index", { title: "Custom Chess Game" });
-})
+});
 
-io.on("connection", function(uniquesocket){
-    console.log("connected");
+io.on("connection", (uniquesocket) => {
+    console.log("connected with socket id:", uniquesocket.id);
 
-   if(!players.white){
+    if (!players.white) {
         players.white = uniquesocket.id;
         uniquesocket.emit("playerRole", "w");
-   }
-   else if(!players.black){
+    } else if (!players.black) {
         players.black = uniquesocket.id;
-        uniquesocket.emit("playerRole", "b")
-   }
-   else{
-        uniquesocketniquesocket.emit("spectatorRole");
-   }
+        uniquesocket.emit("playerRole", "b");
+    } else {
+        uniquesocket.emit("spectatorRole");
+    }
 
-    uniquesocket.on("disconnect", function(){
-        if(uniquesocket.id === players.white){
+    uniquesocket.on("disconnect", () => {
+        if (uniquesocket.id === players.white) {
             delete players.white;
-        }
-        else if(uniquesocket.id == players.black){
-            delete players.black;            
+        } else if (uniquesocket.id === players.black) {
+            delete players.black;
         }
     });
 
-    uniquesocket.on("move", (move)=>{
-        try{
-            if(chess.turn() === 'w' && uniquesocket.id != players.white) return;
-            if(chess.turn() === 'b' && uniquesocket.id != players.black) return;
+    uniquesocket.on("move", (move) => {
+        try {
+            if (chess.turn() === 'w' && uniquesocket.id != players.white) return;
+            if (chess.turn() === 'b' && uniquesocket.id != players.black) return;
 
             const result = chess.move(move);
-        }   
-        catch(err){
+            if (result) {
+                io.emit("move", move);
+                io.emit("boardstate", chess.fen());
 
+                if (chess.game_over()) {
+                    io.emit("gameover", "Game Over");
+                }
+            } else {
+                console.log("Invalid move: ", move);
+                uniquesocket.emit("InvalidMove", move);
+            }
+        } catch (err) {
+            console.log(err);
+            uniquesocket.emit("Invalid move: ", move);
         }
-    })
-})
+    });
+});
 
-
-server.listen(3000, ()=>{
-    console.log("Server running at localhost: 3000");
-})
+server.listen(3000, () => {
+    console.log("Server running at localhost:3000");
+});
