@@ -32,13 +32,31 @@ io.on("connection", function(uniquesocket){
         uniquesocket.emit("playerRole", "b")
    }
    else{
-        niquesocket.emit("spectatorRole");
+        uniquesocketniquesocket.emit("spectatorRole");
    }
 
-   socket.on("disconnect", function(){
-     
-   });
+    uniquesocket.on("disconnect", function(){
+        if(uniquesocket.id === players.white){
+            delete players.white;
+        }
+        else if(uniquesocket.id == players.black){
+            delete players.black;            
+        }
+    });
+
+    uniquesocket.on("move", (move)=>{
+        try{
+            if(chess.turn() === 'w' && uniquesocket.id != players.white) return;
+            if(chess.turn() === 'b' && uniquesocket.id != players.black) return;
+
+            const result = chess.move(move);
+        }   
+        catch(err){
+
+        }
+    })
 })
+
 
 server.listen(3000, ()=>{
     console.log("Server running at localhost: 3000");
